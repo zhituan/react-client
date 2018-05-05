@@ -28,6 +28,7 @@ class Register extends Component{
         })
     }
     toLogo = ()=>{
+        this.props.user.msg=''
         this.props.history.replace('/login')
     }
     register = ()=>{

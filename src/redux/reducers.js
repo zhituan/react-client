@@ -4,7 +4,10 @@ import {
     ERROR_MSG,
     RECEIVE_USER,
     RESET_USER,
-    RECEIVE_USER_LIST
+    RECEIVE_USER_LIST,
+    RECEIVE_MSG_LIST,
+    RECEIVE_MSG,
+    MSG_READ
 } from './action-types'
 import {getRedirectTo} from '../utils'
 //根据后台返回的数据来更新state?
@@ -42,8 +45,36 @@ function userList(state = initUserList ,action) {
             return state
     }
 }
+//产生聊天状态的reducer
+const initChat ={
+    chatMsgs:[],//当前用户所有相关msg的数组
+    users:{},//所有用户信息对象的对象，属性名：userid ，属性值：{username，header}
+    unReadCount:0,//总的未读数量
+}
+function chat(state=initChat , action) {
+    switch (action.type){
+        case RECEIVE_MSG_LIST: //data:{users ,chatMsgs}
+            const {users , chatMsgs} = action.data
+            console.log('action.data',action.data)
+            return {
+                users,
+                chatMsgs,
+                unReadCount:0
+            }
+        case RECEIVE_MSG://data : chatMsg 在初始化initIO，io.socket接收消息后，分发的receiveMsg(chatMsg)
+            const chatMsg = action.data
+            return {
+                users:state.users,
+                chatMsgs:[...state.chatMsgs,chatMsg],//在前面已有的消息列表基础上添加新的消息
+                unReadCount:0
+            }
+        default:
+            return state
+    }
+}
 
 export default combineReducers({
     user,
-    userList
+    userList,
+    chat
 })

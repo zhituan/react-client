@@ -14,6 +14,8 @@ import NotFount from '../../components/not-found/not-found'
 import NavFooter from '../../components/nav-footer/nav-footer'
 import {getRedirectTo} from '../../utils'
 import {getUser} from '../../redux/actions'
+import Chat from '../chat/chat-1'
+
 
 class Main extends Component{
     // 给组件对象添加属性
@@ -101,6 +103,7 @@ class Main extends Component{
 
                     <Route path='/laobaninfo' component={LaobanInfo}/>
                     <Route path='/dasheninfo' component={DashenInfo}/>
+                    <Route path='/chat/:userid' component={Chat}/>
                     <Route component={NotFount}/>
                 </Switch>
                 {currentNav ? <NavFooter navList={navList}/> : null}
