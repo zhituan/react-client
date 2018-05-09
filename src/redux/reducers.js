@@ -51,22 +51,39 @@ const initChat ={
     users:{},//所有用户信息对象的对象，属性名：userid ，属性值：{username，header}
     unReadCount:0,//总的未读数量
 }
-function chat(state=initChat , action) {
-    switch (action.type){
-        case RECEIVE_MSG_LIST: //data:{users ,chatMsgs}
-            const {users , chatMsgs} = action.data
-            console.log('action.data',action.data)
+function chat(state=initChat, action) {
+    switch (action.type) {
+        case RECEIVE_MSG_LIST:  // data: {users, chatMsgs}
+            const {users, chatMsgs, userid} = action.data
             return {
                 users,
                 chatMsgs,
-                unReadCount:0
+                unReadCount: chatMsgs.reduce((preTotal, msg) => preTotal+(!msg.read&&msg.to===userid?1:0),0)
             }
-        case RECEIVE_MSG://data : chatMsg 在初始化initIO，io.socket接收消息后，分发的receiveMsg(chatMsg)
-            const chatMsg = action.data
+        case RECEIVE_MSG: // data: chatMsg
+            const {chatMsg} = action.data
             return {
-                users:state.users,
-                chatMsgs:[...state.chatMsgs,chatMsg],//在前面已有的消息列表基础上添加新的消息
-                unReadCount:0
+                users: state.users,
+                chatMsgs: [...state.chatMsgs, chatMsg],
+                unReadCount: state.unReadCount + (!chatMsg.read&&chatMsg.to===action.data.userid?1:0)
+            }
+        case MSG_READ:
+            const {from, to, count} = action.data
+            state.chatMsgs.forEach(msg => {
+                if(msg.from===from && msg.to===to && !msg.read) {
+                    msg.read = true
+                }
+            })
+            return {
+                users: state.users,
+                chatMsgs: state.chatMsgs.map(msg => {
+                    if(msg.from===from && msg.to===to && !msg.read) { // 需要更新
+                        return {...msg, read: true}
+                    } else {// 不需要
+                        return msg
+                    }
+                }),
+                unReadCount: state.unReadCount-count
             }
         default:
             return state

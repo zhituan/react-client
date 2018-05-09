@@ -1,3 +1,8 @@
+/*
+包含n个action creator
+异步action
+同步action
+ */
 import io from 'socket.io-client'
 import {
     AUTH_SUCCESS,
@@ -16,13 +21,9 @@ import {
     reqUser,
     reqUserList,
     reqChatMsgList,
-    reqReadChatMsg
+    reqReadMsg
 } from '../api'
-/*单例对象
-1，创建对象之前：判断对象是否已经存在，只有不存在才去创建
-2，创建对象之后：保存对象
-*/
-//初始化客户端socketio
+
 /*
 单例对象
 1. 创建对象之前: 判断对象是否已经存在, 只有不存在才去创建
@@ -40,7 +41,7 @@ function initIO(dispatch, userid) {
             // 只有当chatMsg是与当前用户相关的消息, 才去分发同步action保存消息
             // debugger
             if(userid===chatMsg.from || userid===chatMsg.to) {
-                dispatch(receiveMsg(chatMsg))
+                dispatch(receiveMsg(chatMsg, userid))
             }
         })
 
@@ -54,77 +55,114 @@ async function getMsgList(dispatch, userid) {
     const result = response.data
     if(result.code===0) {
         const {users, chatMsgs} = result.data
-        console.log('xxxx' , result.data)
         // 分发同步action
-        dispatch(receiveMsgList({users, chatMsgs}))
+        dispatch(receiveMsgList({users, chatMsgs, userid}))
     }
 }
 
-//发送消息的异步action
-export const sendMsg = ({from , to ,content}) =>{
-    return dispatch =>{
-        console.log('发送消息'+{from , to, content})
-        //发送消息
-        io.socket.emit('sendMsg',{from , to ,content})
+// 发送消息的异步action
+export const sendMsg = ({from, to, content}) => {
+    return dispatch => {
+        console.log('客户端向服务器发送消息', {from, to, content})
+        // 发消息
+        io.socket.emit('sendMsg', {from, to, content})
     }
 }
-//授权成功的同步action
- const authSuccess = (user) =>({type:AUTH_SUCCESS,data:user})
-//错误提示信息的同步action
- const errorMsg = (msg) => ({type:ERROR_MSG , data:msg})
+
+// 读取消息的异步action
+export const readMsg = (from, to) => {
+    return async dispatch => {
+        const response = await reqReadMsg(from)
+        const result = response.data
+        if(result.code===0) {
+            const count = result.data
+            dispatch(msgRead({count, from, to}))
+        }
+    }
+}
+
+
+
+
+
+// 授权成功的同步action
+const authSuccess = (user) => ({type: AUTH_SUCCESS, data: user})
+// 错误提示信息的同步action
+const errorMsg = (msg) => ({type: ERROR_MSG, data: msg})
 // 接收用户的同步action
 const receiveUser = (user) => ({type: RECEIVE_USER, data:user})
 // 重置用户的同步action
 export const resetUser = (msg) => ({type: RESET_USER, data: msg})
-//获取用户列表的同步action
-const receiveUserList =(userList) =>({type :RECEIVE_USER_LIST,data:userList})
-//接收消息列表的同步action
-const receiveMsgList = ({users , chatMsgs}) =>({type:RECEIVE_MSG_LIST , data:{users , chatMsgs}})
-//接收一个消息的同步action
-const receiveMsg = (chatMsg) => ({type:RECEIVE_MSG , data:chatMsg})
+// 接收用户列表的同步action
+const receiveUserList = (userList) => ({type: RECEIVE_USER_LIST, data: userList})
+// 接收消息列表的同步action
+const receiveMsgList = ({users, chatMsgs, userid}) => ({type: RECEIVE_MSG_LIST, data:{users, chatMsgs, userid}})
+// 接收一个消息的同步action
+const receiveMsg = (chatMsg, userid) => ({type: RECEIVE_MSG, data: {chatMsg, userid}})
+// 读取了某个聊天消息的同步action
+const msgRead = ({count, from, to}) => ({type: MSG_READ, data: {count, from, to}})
 
-//注册异步action
-export const register = (user)=>{
-     const {username , password ,password2,type} = user
-    if(!username){
-         return errorMsg('用户名不能为空')
-    }else if(password !== password2){
-         return errorMsg('2次密码要一致')
+// 注册异步action
+export const register = (user) => {
+    const {username, password, password2, type} = user
+    // 做表单的前台检查, 如果不通过, 返回一个errorMsg的同步action
+    if(!username) {
+        return errorMsg('用户名必须指定!')
+    } else if(password!==password2) {
+        return errorMsg('2次密码要一致!')
     }
-
-    return async dispatch =>{
-        // 发送注册的异步ajax请求
-        const response = await reqRegister({username , password ,type})
-        const result = response.data //  {code: 0/1, data: user, msg: ''}
-        if(result.code === 0){
-            getMsgList(dispatch, result.data._id)
-            dispatch(authSuccess(result.data))
-
-        }else{
-            dispatch(errorMsg(result.msg))
-        }
-    }
-}
-//登陆异步请求
-export const login = (user) =>{
-     //前台验证
-    if(! user.username){
-        return errorMsg('用户名不能为空')
-    }else if(!user.password){
-        return errorMsg('密码不能为空')
-    }
+    // 表单数据合法, 返回一个发ajax请求的异步action函数
     return async dispatch => {
-        //发送异步，并取得返回的信息
-        const respose = await reqLogin(user)
-        const result = respose.data // {code: 0/1, data: user, msg: ''}
-        if(result.code === 0){
+
+
+        // 发送注册的异步ajax请求
+        /*const promise = reqRegister(user)
+        promise.then(response => {
+          const result = response.data  // {code: 0/1, data: user, msg: ''}
+        })*/
+        const response = await reqRegister({username, password, type})
+        const result = response.data //  {code: 0/1, data: user, msg: ''}
+        if(result.code===0) {// 成功
             getMsgList(dispatch, result.data._id)
+            // 分发授权成功的同步action
             dispatch(authSuccess(result.data))
-        }else{
+        } else { // 失败
+            // 分发错误提示信息的同步action
             dispatch(errorMsg(result.msg))
         }
     }
 }
+
+// 登陆异步action
+export const login = (user) => {
+
+    const {username, password} = user
+    // 做表单的前台检查, 如果不通过, 返回一个errorMsg的同步action
+    if(!username) {
+        return errorMsg('用户名必须指定!')
+    } else if(!password) {
+        return errorMsg('密码必须指定!')
+    }
+
+    return async dispatch => {
+        // 发送注册的异步ajax请求
+        /*const promise = reqLogin(user)
+        promise.then(response => {
+          const result = response.data  // {code: 0/1, data: user, msg: ''}
+        })*/
+        const response = await reqLogin(user)
+        const result = response.data
+        if(result.code===0) {// 成功
+            getMsgList(dispatch, result.data._id)
+            // 分发授权成功的同步action
+            dispatch(authSuccess(result.data))
+        } else { // 失败
+            // 分发错误提示信息的同步action
+            dispatch(errorMsg(result.msg))
+        }
+    }
+}
+
 // 更新用户异步action
 export const updateUser = (user) => {
     return async dispatch => {
@@ -153,14 +191,15 @@ export const getUser = () => {
     }
 }
 
-//获取用户列表的异步action
-export const getUserList = (type)=>{
-    return async dispatch =>{
+// 获取用户列表的异步action
+export const getUserList = (type) => {
+    return async dispatch => {
+        // 执行异步ajax请求
         const response = await reqUserList(type)
         const result = response.data
-        if(result.code === 0){
+        // 得到结果后, 分发一个同步action
+        if(result.code===0) {
             dispatch(receiveUserList(result.data))
-           // console.log(result.data) [{…}, {…}, {…}, {…}, {…}]
         }
     }
 }

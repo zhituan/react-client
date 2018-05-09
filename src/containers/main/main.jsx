@@ -69,7 +69,7 @@ class Main extends Component{
             return <Redirect to='/login'/>
         }
         // 如果有,读取redux中的user状态
-        const {user} = this.props
+        const {user ,unReadCount} = this.props
         // 如果user有没有_id, 返回null(不做任何显示)
         if(!user._id) {
             return null
@@ -104,16 +104,15 @@ class Main extends Component{
                     <Route path='/laobaninfo' component={LaobanInfo}/>
                     <Route path='/dasheninfo' component={DashenInfo}/>
                     <Route path='/chat/:userid' component={Chat}/>
-                    <Route component={NotFount}/>
                 </Switch>
-                {currentNav ? <NavFooter navList={navList}/> : null}
+                {currentNav ? <NavFooter navList={navList} unReadCount={unReadCount}/> : null}
             </div>
         )
     }
 }
 
 export default connect(
-    state => ({user: state.user}),
+    state => ({user: state.user ,unReadCount: state.chat.unReadCount}),
     {getUser}
 )(Main)
 

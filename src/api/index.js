@@ -15,5 +15,5 @@ export const reqUserList = (type) =>ajax('/userlist',{type})
 //请求获取当前用户的所有聊天记录
 //不需要携带任何信息去请求，后台根据cookie中的userid来获取
 export const reqChatMsgList = ()=>ajax('/msglist')
-//标识查看了指定用户发送的聊天信息 ????
-export const reqReadChatMsg = (from) => ajax('/readmsg' ,{from} ,'POST')
+// 修改指定消息为已读
+export const reqReadMsg = (from) => ajax('/readmsg', {from}, 'POST')
